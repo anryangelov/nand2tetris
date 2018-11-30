@@ -25,7 +25,10 @@ Token = namedtuple('Token', ['value', 'type'])
 
 
 class ParseError(Exception):
-    pass
+
+    def __init__(self, token=None, message=None):
+        if token:
+            message = "Unexpected token: ", token
 
 
 class JackTokenizer:
@@ -107,21 +110,26 @@ class JackTokenizer:
 class CompilationEngine:
 
     def __init__(self, input_stream, output_stream):
-        self.input = input_stream
+        self.token_gen = iter(JackAnalyzer(self.input_stream))
         self.output = output_stream
         self.data = {}
+
+    def advance(self, *args, type_=None):
+        t = next(self.token_gen)
+        if ((args and t.value not in args) or
+            (type_ and t.type != type_)):
+            raise ParseError("Unexpected token: ", t)
+        return t
 
     def start(self):
         self.token_gen = iter(JackAnalyzer(self.input_stream))
         try:
-            t = next(self.token_gen)
-            if t.value != 'class':
-                raise ParseError("Unexpected token: ", t)
+            self.advance('class')
             self.data['class'] = self.compile_class()
         except StopIteration:
             pass
 
-    def compile_class(self):
+    def compile_class(self, token):
         tokens = {}
         for value, type_ in (
                 ('class', KEYWORD),
@@ -133,7 +141,9 @@ class CompilationEngine:
                 raise ParseError("Unexpected token: ", t)
             tokens[t.type] = t.value
 
-        tokens['classVarDec'] = self.compile_class_var_dec()
+        t = next(self.token_gen)
+        if t.value in ('static', 'field'):
+            tokens['classVarDec'] = self.compile_class_var_dec(t)
 
         t = next(self.token_gen)
         if t.value != '}':
@@ -141,8 +151,18 @@ class CompilationEngine:
 
         return tokens
 
-    def compile_class_var_dec(self):
-        pass
+    def compile_class_var_dec(self, token):
+        tokens = {}
+        tokens[token.type] = token.value
+
+        t = next(self.token_gen)
+        if t.value != 'type':
+            ParseError("Unexpected token: ", t)
+        tokens[t.type] = t.value
+
+        t = next(self.token_gen)
+        if t.type != INDENDIFIER:
+            ParseError("Unexpected token: ", t)
 
 
 class JackAnalyzer():
