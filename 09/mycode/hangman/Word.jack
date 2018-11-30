@@ -1,0 +1,77 @@
+class Word {
+
+    field String word;  // word that should be guessed
+    field String currentWord;  // word with guessed letters, others are blanked;
+    field boolean letter_is_guessed;
+
+    constructor Word new(String given_word) {
+        var int i;
+        let i = 0;
+
+        let word = given_word;
+        let currentWord = String.new(word.length());
+
+        while (i < word.length()) {
+            do currentWord.appendChar("_");
+            let i = i + 1;
+        }
+
+        return this;
+    }
+
+    method void guessLetter(char letter) {
+        var int i;
+        var char c;
+
+        let i = 0;
+
+        let letter_is_guessed = false;
+
+        while (i < word.length()) {
+            let c = word.charAt(i);
+            if (c = letter) {
+                do currentWord.setCharAt(i, c);
+                let letter_is_guessed = true;
+            }
+            let i = i + 1;
+        }
+        return;
+    }
+
+    method String getCurrentWord() {
+        return currentWord;
+    }
+
+    method boolean isLetterGuessed() {
+        return letter_is_guessed;
+    }
+
+    method boolean isGuessed() {
+        var boolean guessed;
+        var int i;
+        var char c_word;
+        var char c_curr_word;
+
+        let guessed = true;
+        let i = 0;
+
+        while ((i < word.length()) & guessed) {
+            let c_word = word.charAt(i);
+            let c_curr_word = currentWord.charAt(i);
+
+            if (~(c_word = c_curr_word)) {
+                let guessed = false;
+            }
+            let i = i + 1;
+        }
+
+        return guessed;
+
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+}

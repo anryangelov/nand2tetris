@@ -1,0 +1,57 @@
+class Man {
+
+    field int step;
+
+    constructor Man new() {
+        let step = 0;
+        return this;
+    }
+
+
+    method void paintStep() {
+        if (step = 0) {
+            do Screen.drawLine(250, 200, 290, 200);
+        }
+        if (step = 1) {
+            do Screen.drawLine(270, 200, 270, 100);
+        }
+        if (step = 2) {
+            do Screen.drawLine(270, 100, 290, 100);
+        }
+        if (step = 3) {
+            do Screen.drawLine(290, 100, 290, 120);
+        }
+        if (step = 4) {
+            do Screen.setColor(true);
+            do Screen.drawCircle(290, 130, 10);
+        }
+        if (step = 5) {
+            do Screen.drawLine(290, 140, 290, 170);
+        }
+        if (step = 6) {
+            do Screen.drawLine(290, 170, 282, 185);
+        }
+        if (step = 7) {
+            do Screen.drawLine(290, 170, 298, 185);
+        }
+        return;
+    }
+
+    method void next() {
+        if (~isHanged()) {
+            do paintStep();
+            let step = step + 1;
+        } 
+        return;
+    }
+
+    method boolean isHanged() {
+        return (step > 7);
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+}

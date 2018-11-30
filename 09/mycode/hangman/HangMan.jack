@@ -1,0 +1,75 @@
+class HangMan {
+
+    field Word word;
+    field Man man;
+
+    constructor HangMan new() {
+        let word = Word.new("PYTHONIC");
+        let man = Man.new();
+        return this;
+    }
+
+    method void print_current(char c) {
+        var String spaces;
+        let spaces = "      ";
+
+        do Output.printString(word.getCurrentWord());
+        do Output.printString(spaces);
+        do Output.printChar(c);
+        do Output.println();
+        return;
+    }
+
+    method void print_end(boolean exit) {
+        do Output.println();
+        if (word.isGuessed()) {
+            do Output.printString("You Win");
+        }
+        if (man.isHanged()) {
+            do Output.printString("You Lost");
+        }
+        if (exit) {
+            do Output.printString("Exit game");
+        }
+        return;
+    }
+
+    method void run() {
+        var char c;
+        var boolean exit;
+        let c = 0;
+        let exit = false;
+
+        while ((~word.isGuessed()) & (~man.isHanged()) & (~exit)) {
+            while (c = 0) {
+                let c = Keyboard.keyPressed();
+            }
+
+            if (~(c = 81)) {  // q (quit) {
+                do word.guessLetter(c);
+
+                if (~word.isLetterGuessed()) {
+                    do man.next();
+                }
+
+                do print_current(c);
+
+            } else {
+                let exit = true;
+            }
+
+            while (~(c = 0)) {
+                let c = Keyboard.keyPressed();
+            }
+        }
+
+        do print_end(exit);
+        return;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+}

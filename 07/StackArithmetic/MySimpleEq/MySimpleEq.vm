@@ -1,0 +1,6 @@
+push constant 10
+push constant 11
+push constant 12
+push constant 12
+eq
+eq

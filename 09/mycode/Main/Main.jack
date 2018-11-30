@@ -1,0 +1,26 @@
+class Main {
+    function void main () {
+        var int x;
+        var int y;
+        var int size;
+        let x = 0;
+        let y = 30;
+        let size = 2;
+
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x, y, x + size, y + size);
+
+        do Sys.wait(3000);  // delays the next movement
+
+        do Screen.setColor(false);
+        do Screen.drawRectangle(x, (y + size) - 1, x + size, y + size);
+
+        do Sys.wait(3000);  // delays the next movement
+        let y = y - 3;
+
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x, y, x + size, y + 1);
+
+        return;
+    }
+}
