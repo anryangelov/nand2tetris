@@ -1,6 +1,6 @@
 import io
 
-from analyzer import JackTokenizer
+from analyzer import Token, JackTokenizer, CompilationEngine
 
 
 def test_jack_tokenizer():
@@ -168,3 +168,29 @@ def test_jack_tokenizer():
     t = next(tokenizer)
     assert t.value == '}'
     assert t.type == 'symbol'
+
+
+def test_compilation_engine_basic():
+    in_stream = io.StringIO('class Foo {field int bar1, bar2; field Moo goo;}')
+    out_stream = io.StringIO()
+    comp_engine = CompilationEngine(in_stream, out_stream)
+    data = comp_engine.start()
+    # import pprint; pprint.pprint(data)
+    assert  ['class',
+                ('class', 'keyword'),
+                ('Foo', 'identifier'),
+                ('{', 'symbol'),
+                ['classVarDec',
+                    ('field', 'keyword'),
+                    ('int', 'keyword'),
+                    ('bar1', 'identifier'),
+                    (',', 'symbol'),
+                    ('bar2', 'identifier'),
+                    (';', 'symbol')],
+                ['classVarDec',
+                    ('field', 'keyword'),
+                    ('Moo', 'identifier'),
+                    ('goo', 'identifier'),
+                    (';', 'symbol')],
+               ('}', 'symbol')
+            ] == data
