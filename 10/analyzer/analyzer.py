@@ -148,6 +148,12 @@ class CompilationEngine:
             data.append(d)
             t = next(self.tokenizer)
 
+        t = next(self.tokenizer)
+        while t.value in ('constructor', 'function', 'mothod'):
+            d = self.compile_subroutine_dec(self, t)
+            data.append(d)
+            t = next(self.tokenizer)
+
         if t.value != '}':
             raise ParseError(t)
         data.append(t)
@@ -186,7 +192,48 @@ class CompilationEngine:
             return
         raise ParseError(t)
 
+    def compile_subroutine_dec(self, t):
+        data = ['subroutineDec']
+        data.append(t)
 
+        t = next(self.tokenizer)
+        if t.value != 'void':
+            self.raise_if_type_is_wrong()
+        data.append(t)
+
+        t = next(self.tokenizer)
+        if t.type != INDENDIFIER:
+            raise ParseError(t)
+        data.append(t)
+
+        t = next(self.tokenizer)
+        if t.value != '(':
+            raise ParseError(t)
+
+        t = next(self.tokenizer)
+        if t.value != ')':
+            d = self.parameter_list(t)
+            data.append(d)
+
+
+    def parameter_list(self, t):
+        data = ['parameterList']
+
+        while True:
+            self.raise_if_type_is_wrong(t)
+            data.append(t)
+
+            t = next(self.tokenizer)
+            if t.type != INDENDIFIER:
+                raise ParseError(t)
+            data.append(t)
+
+            t = next(self.tokenizer)
+            if t.value != ',':
+                break
+            
+
+        return data
 
 class JackAnalyzer():
 
