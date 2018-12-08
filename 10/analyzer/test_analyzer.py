@@ -170,7 +170,7 @@ def test_jack_tokenizer():
     assert t.type == 'symbol'
 
 
-def test_compilation_engine_basic():
+def test_compilation_engine_class_basic():
     in_stream = io.StringIO('class Foo {field int bar1, bar2; field Moo goo;}')
     out_stream = io.StringIO()
     comp_engine = CompilationEngine(in_stream, out_stream)
@@ -193,4 +193,79 @@ def test_compilation_engine_basic():
                     ('goo', 'identifier'),
                     (';', 'symbol')],
                ('}', 'symbol')
+            ] == data
+
+
+def test_compilation_engine_class():
+    in_stream = io.StringIO(
+    '''class Foo {
+
+        field int bar1, bar2;
+        field Moo goo;
+
+        // define method here
+        method Foo method_name (int int_var, Goo goo_var) {
+            var char letter;
+            var int i, j, k;
+        }
+
+        // define function without parameters
+        // function void method_void() {}
+    }
+    ''')
+    out_stream = io.StringIO()
+    comp_engine = CompilationEngine(in_stream, out_stream)
+    data = comp_engine.start()
+    import pprint; pprint.pprint(data)
+    assert  ['class',
+                ('class', 'keyword'),
+                ('Foo', 'identifier'),
+                ('{', 'symbol'),
+                ['classVarDec',
+                    ('field', 'keyword'),
+                    ('int', 'keyword'),
+                    ('bar1', 'identifier'),
+                    (',', 'symbol'),
+                    ('bar2', 'identifier'),
+                    (';', 'symbol')],
+                ['classVarDec',
+                    ('field', 'keyword'),
+                    ('Moo', 'identifier'),
+                    ('goo', 'identifier'),
+                    (';', 'symbol')],
+                ['subroutineDec',
+                    ('method', 'keyword'),
+                    ('Foo', 'identifier'),
+                    ('method_name', 'identifier'),
+                    ('(', 'symbol'),
+                    ['parameterList',
+                        ('int', 'keyword'),
+                        ('int_var', 'identifier'),
+                        (',', 'symbol'),
+                        ('Goo', 'identifier'),
+                        ('goo_var', 'identifier'),
+                    ],
+                    (')', 'symbol'),
+                    ['subroutineBody',
+                        ('{', 'symbol'),
+                        ['varDec',
+                            ('var', 'keyword'),
+                            ('char', 'keyword'),
+                            ('letter', 'identifier'),
+                            (';', 'symbol'),
+                        ],
+                        ['varDec',
+                            ('var', 'keyword'),
+                            ('int', 'keyword'),
+                            ('i', 'identifier'),
+                            (',', 'symbol'),
+                            ('j', 'identifier'),
+                            (',', 'symbol'),
+                            ('k', 'identifier'),
+                            (';', 'symbol'),
+                        ],
+                        ('}', 'symbol'),
+                    ]
+                ],
+               ('}', 'symbol'),
             ] == data

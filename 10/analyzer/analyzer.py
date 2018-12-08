@@ -144,13 +144,12 @@ class CompilationEngine:
 
         t = next(self.tokenizer)
         while t.value in ('static', 'field'):
-            d = self.compile_class_var_dec(t)
+            d = self.compile_var_dec(t, structure='classVarDec')
             data.append(d)
             t = next(self.tokenizer)
 
-        t = next(self.tokenizer)
-        while t.value in ('constructor', 'function', 'mothod'):
-            d = self.compile_subroutine_dec(self, t)
+        while t.value in ('constructor', 'function', 'method'):
+            d = self.compile_subroutine_dec(t)
             data.append(d)
             t = next(self.tokenizer)
 
@@ -160,8 +159,8 @@ class CompilationEngine:
 
         return data
 
-    def compile_class_var_dec(self, t):
-        data = ['classVarDec']
+    def compile_var_dec(self, t, structure):
+        data = [structure]
         data.append(t)
 
         t = next(self.tokenizer)
@@ -198,7 +197,7 @@ class CompilationEngine:
 
         t = next(self.tokenizer)
         if t.value != 'void':
-            self.raise_if_type_is_wrong()
+            self.raise_if_type_is_wrong(t)
         data.append(t)
 
         t = next(self.tokenizer)
@@ -209,17 +208,47 @@ class CompilationEngine:
         t = next(self.tokenizer)
         if t.value != '(':
             raise ParseError(t)
+        data.append(t)
+
+        d, t = self.parameter_list()
+        data.append(d)
+
+        if t.value != ')':
+            raise ParseError(t)
+        data.append(t)
+
+        d = self.subroutine_body()
+        data.append(d)
+
+        return data
+
+    def subroutine_body(self):
+        data = ['subroutineBody']
 
         t = next(self.tokenizer)
-        if t.value != ')':
-            d = self.parameter_list(t)
+        if t.value != '{':
+            raise ParseError(t)
+        data.append(t)
+
+        while True:
+            t = next(self.tokenizer)
+            if t.value != 'var':
+                break
+
+            d = self.compile_var_dec(t, structure='varDec')
             data.append(d)
 
+        if t.value != '}':
+            raise ParseError(t)
+        data.append(t)
 
-    def parameter_list(self, t):
+        return data
+
+    def parameter_list(self):
         data = ['parameterList']
 
         while True:
+            t = next(self.tokenizer)
             self.raise_if_type_is_wrong(t)
             data.append(t)
 
@@ -231,9 +260,10 @@ class CompilationEngine:
             t = next(self.tokenizer)
             if t.value != ',':
                 break
-            
+            data.append(t)
 
-        return data
+        return data, t
+
 
 class JackAnalyzer():
 
