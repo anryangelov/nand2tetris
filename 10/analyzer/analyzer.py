@@ -28,36 +28,43 @@ class ParseError(Exception):
     pass
 
 
+class NoMoreTokens(Exception):
+    pass
+
+
 class JackTokenizer:
 
     def __init__(self, stream):
         self.stream = stream
 
-    def __iter__(self):  # advance
+    def advance(self):
         word = ''
-        while True:
+        token = None
+        while not token:
             self._advance_if_comment()
 
             char = self.stream.read(1)
 
             if not char:  # end of the stream
-                break
-            elif char == '"':
+                raise NoMoreTokens()
+
+            if char == '"':
                 value = self._advance_until(char)
-                yield Token(value, STRING)
+                token = Token(value, STRING)
+            elif char in symbols and word:
+                type_ = JackTokenizer.get_token_type(word)
+                token = Token(word, type_)
+                self.stream.seek(self.stream.tell() - 1)  # move to previous char (symbol)
             elif char in symbols:
-                if word:
-                    type_ = JackTokenizer.get_token_type(word)
-                    yield Token(word, type_)
-                    word = ''
-                yield Token(char, SYMBOL)
+                token = Token(char, SYMBOL)
+            elif char.isspace() and word:
+                type_ = JackTokenizer.get_token_type(word)
+                token = Token(word, type_)
             elif char.isspace():
-                if word:
-                    type_ = JackTokenizer.get_token_type(word)
-                    yield Token(word, type_)
-                    word = ''
+                pass
             else:
                 word += char
+        return token
 
     def _advance_if_comment(self):
         s = self.stream.read(2)
@@ -108,50 +115,56 @@ class CompilationEngine:
 
     def __init__(self, input_stream, output_stream):
         self.output = output_stream
-        tokenizer = JackTokenizer(input_stream)
-        self.tokenizer = iter(tokenizer)
+        self.tokenizer = JackTokenizer(input_stream)
+
+    def advance(self):
+        return self.tokenizer.advance()
+
+    def advance_if_value(self, value):
+        t = self.advance()
+        if t.value != value:
+            raise ParseError(t)
+        return t
+
+    def advance_if_type(self, type_):
+        t = self.advance()
+        if t.type != type_:
+            raise ParseError(t)
+        return t
 
     def start(self):
         try:
-            t = next(self.tokenizer)
-            if t.value != 'class':
-                raise ParseError(t)
+            t = self.advance_if_value('class')
             return self.compile_class(t)
-
-        except StopIteration:
+        except NoMoreTokens:
             raise ParseError('Expect more tokens')
 
         try:
-            next(self.tokenizer)
-        except StopIteration:
+            self.advance()
+        except NoMoreTokens:
             pass
         else:
             raise ParseError('More tokens than needed')
 
     def compile_class(self, t):
-        data = ['class']
+        data = ['class', t]
+
+        t = self.advance_if_type(INDENDIFIER)
         data.append(t)
 
-        t = next(self.tokenizer)
-        if t.type != INDENDIFIER:
-            raise ParseError(t)
+        t = self.advance_if_value('{')
         data.append(t)
 
-        t = next(self.tokenizer)
-        if t.value != '{':
-            raise ParseError
-        data.append(t)
-
-        t = next(self.tokenizer)
+        t = self.advance()
         while t.value in ('static', 'field'):
             d = self.compile_var_dec(t, structure='classVarDec')
             data.append(d)
-            t = next(self.tokenizer)
+            t = self.tokenizer.advance()
 
         while t.value in ('constructor', 'function', 'method'):
             d = self.compile_subroutine_dec(t)
             data.append(d)
-            t = next(self.tokenizer)
+            t = self.advance()
 
         if t.value != '}':
             raise ParseError(t)
@@ -160,20 +173,17 @@ class CompilationEngine:
         return data
 
     def compile_var_dec(self, t, structure):
-        data = [structure]
-        data.append(t)
+        data = [structure, t]
 
-        t = next(self.tokenizer)
+        t = self.advance()
         self.raise_if_type_is_wrong(t)
         data.append(t)
 
         while True:
-            t = next(self.tokenizer)
-            if t.type != INDENDIFIER:
-                raise ParseError(t)
+            t = self.advance_if_type(INDENDIFIER)
             data.append(t)
 
-            t = next(self.tokenizer)
+            t = self.advance()
             if t.value in (',', ';'):
                 data.append(t)
             else:
@@ -192,22 +202,17 @@ class CompilationEngine:
         raise ParseError(t)
 
     def compile_subroutine_dec(self, t):
-        data = ['subroutineDec']
-        data.append(t)
+        data = ['subroutineDec', t]
 
-        t = next(self.tokenizer)
+        t = self.advance()
         if t.value != 'void':
             self.raise_if_type_is_wrong(t)
         data.append(t)
 
-        t = next(self.tokenizer)
-        if t.type != INDENDIFIER:
-            raise ParseError(t)
+        t = self.advance_if_type(INDENDIFIER)
         data.append(t)
 
-        t = next(self.tokenizer)
-        if t.value != '(':
-            raise ParseError(t)
+        t = self.advance_if_value('(')
         data.append(t)
 
         d, t = self.parameter_list()
@@ -225,13 +230,11 @@ class CompilationEngine:
     def subroutine_body(self):
         data = ['subroutineBody']
 
-        t = next(self.tokenizer)
-        if t.value != '{':
-            raise ParseError(t)
+        t = self.advance_if_value('{')
         data.append(t)
 
         while True:
-            t = next(self.tokenizer)
+            t = self.advance()
             if t.value != 'var':
                 break
 
@@ -247,20 +250,23 @@ class CompilationEngine:
     def parameter_list(self):
         data = ['parameterList']
 
+        t = self.advance()
+        if t.value == ')':
+            return data, t
+
         while True:
-            t = next(self.tokenizer)
             self.raise_if_type_is_wrong(t)
             data.append(t)
 
-            t = next(self.tokenizer)
-            if t.type != INDENDIFIER:
-                raise ParseError(t)
+            t = self.advance_if_type(INDENDIFIER)
             data.append(t)
 
-            t = next(self.tokenizer)
+            t = self.advance()
             if t.value != ',':
                 break
             data.append(t)
+
+            t = self.advance()
 
         return data, t
 
