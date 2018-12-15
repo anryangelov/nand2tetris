@@ -116,20 +116,33 @@ class CompilationEngine:
     def __init__(self, input_stream, output_stream):
         self.output = output_stream
         self.tokenizer = JackTokenizer(input_stream)
+        self.peaked_token = None
+
+    def peak(self):
+        if self.peaked_token is None:
+            t = self.tokenizer.advance()
+            self.peaked_token = t
+        return self.peaked_token
 
     def advance(self):
-        return self.tokenizer.advance()
+        t = self.peak()
+        self.peaked_token = None
+        return t
 
-    def advance_if_value(self, value):
+    def advance_if_value(self, value, data=None):
         t = self.advance()
         if t.value != value:
             raise ParseError(t)
+        if data:
+            data.append(t)
         return t
 
-    def advance_if_type(self, type_):
+    def advance_if_type(self, type_, data=None):
         t = self.advance()
         if t.type != type_:
             raise ParseError(t)
+        if data:
+            data.append(t)
         return t
 
     def start(self):
@@ -149,17 +162,14 @@ class CompilationEngine:
     def compile_class(self, t):
         data = ['class', t]
 
-        t = self.advance_if_type(INDENDIFIER)
-        data.append(t)
-
-        t = self.advance_if_value('{')
-        data.append(t)
+        self.advance_if_type(INDENDIFIER, data)
+        self.advance_if_value('{', data)
 
         t = self.advance()
         while t.value in ('static', 'field'):
             d = self.compile_var_dec(t, structure='classVarDec')
             data.append(d)
-            t = self.tokenizer.advance()
+            t = self.advance()
 
         while t.value in ('constructor', 'function', 'method'):
             d = self.compile_subroutine_dec(t)
@@ -209,12 +219,9 @@ class CompilationEngine:
             self.raise_if_type_is_wrong(t)
         data.append(t)
 
-        t = self.advance_if_type(INDENDIFIER)
-        data.append(t)
+        self.advance_if_type(INDENDIFIER, data)
 
-        t = self.advance_if_value('(')
-        data.append(t)
-
+        self.advance_if_value('(', data)
         d, t = self.parameter_list()
         data.append(d)
 
@@ -230,8 +237,7 @@ class CompilationEngine:
     def subroutine_body(self):
         data = ['subroutineBody']
 
-        t = self.advance_if_value('{')
-        data.append(t)
+        self.advance_if_value('{', data)
 
         while True:
             t = self.advance()
