@@ -20,6 +20,12 @@ symbols = {'{', '}', '(', ')', '[', ']', '.',
     ',', ';', '+', '-', '*', '/', '&',
     '|', '<', '>', '=', ' ~ '}
 
+keyword_const = {'true', 'false', 'null', 'this'}
+
+op = {'+', '-', '*', '/', '&', '|', '<', '>', '='}
+
+unary_op = {'-', ' ~ '}
+
 
 Token = namedtuple('Token', ['value', 'type'])
 
@@ -247,6 +253,9 @@ class CompilationEngine:
             d = self.compile_var_dec(t, structure='varDec')
             data.append(d)
 
+        d, t = self.compile_statemets(t)
+        data.append(d)
+
         if t.value != '}':
             raise ParseError(t)
         data.append(t)
@@ -275,6 +284,147 @@ class CompilationEngine:
             t = self.advance()
 
         return data, t
+
+    def compile_statemets(self, t):
+        data = ['statements']
+
+        while True:
+            if t.value == 'let':
+                d = self.compile_let(t)
+            elif t.value == 'if':
+                d = self.compile_if(t)
+            elif t.value == 'while':
+                d = self.compile_while(t)
+            elif t.value == 'do':
+                d = self.compile_do(t)
+            elif t.value == 'return':
+                d = self.compile_return()
+            else:
+                break
+            data.append(d)
+            t = self.advance()
+
+        return data, t
+
+    def compile_let(self, t):
+        data = ['letStatement', t]
+
+        self.advance_if_type(INDENDIFIER, data)
+        if self.peak().value == '[':
+            self.advance_array(data)
+
+        self.advance_if_value('=', data)
+
+        d, t = self.compile_expression()
+        data.append(d)
+
+        if t.value != ';':
+            raise ParseError(t)
+        data.append(t)
+
+        return data
+
+    def compile_if(self, t):
+        data = ['ifStatemetn', t]
+
+        self.advance_if_value('(', data)
+        d, t = self.compile_expression()
+        data.append(t)
+        self.advance_if_value(')', data)
+        self.advance_if_value('{', data)
+        t = self.advance()
+        d, t = self.compile_statemets('t')
+        data.append(d)
+
+        if t.value == 'else':
+            data.append(t)
+            self.advance_if_value('{', data)
+
+    def compijle_expression(self):
+        data = ['expression']
+
+        while True:
+            d = self.compile_term()
+            data.append(d)
+
+            t = self.advance()
+            if t.value not in op:
+                break
+            data.append(t)
+
+        return data, t
+
+    def compile_term(self):
+        data = ['term']
+
+        t = self.advance()
+        t_peak = self.peak()
+
+        if t.type in ('integerConst', 'stringConst', ) or t.value in keyword_const:
+            data.append(t)
+        elif t.value in unary_op:
+            data.append(t)
+            d = self.compile_term()
+            data.append(d)
+        elif t.type is INDENDIFIER and t_peak.value == '[':
+            data.append(t)
+            self.advance_array(data)
+        elif t.type is INDENDIFIER and (t_peak.value == '.' or t_peak.value == '('):
+            d = self.advance_subroutine_call(t)
+            data.append(d)
+        elif t.type is INDENDIFIER:
+            data.append(t)
+        elif t.value == '(':
+            data.append(t)
+            d, t = self.compile_expression()
+            data.append(d)
+            if t.value != ')':
+                raise ParseError(t)
+            data.append(t)
+        else:
+            raise ValueError(t)
+
+        return data
+
+    def compile_expression_list(self):
+        data = ['expressionList']
+
+        if self.peak().value == ')':
+            t = self.advance()
+            return data, t
+
+        d, t = self.compile_expression()
+        data.append(d)
+        while t.value == ',':
+            data.append(t)
+            d, t = self.compile_expression()
+            data.append(d)
+
+        return data, t
+
+    def advance_subroutine_call(self, t):
+        data = [t]
+
+        t = self.peak()
+        if t.value == '.':
+            self.advance()
+            data.append(t)
+            self.advance_if_type(INDENDIFIER, data)
+        self.advance_if_value('(', data)
+        d, t = self.compile_expression_list()
+        data.append(d)
+        if t.value != ')':
+            raise ParseError(t)
+        data.append(t)
+        return data
+
+    def advance_array(self, data):
+        self.advance_if_value('[', data)
+        d, t = self.compile_expression()
+        data.append(d)
+        if t.value != ']':
+            raise ParseError(t)
+        data.append(t)
 
 
 class JackAnalyzer():

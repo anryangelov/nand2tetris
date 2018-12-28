@@ -172,12 +172,15 @@ def test_jack_tokenizer():
     assert t.type == 'symbol'
 
 
-def test_compilation_engine_class_basic():
-    in_stream = io.StringIO('class Foo {field int bar1, bar2; field Moo goo;}')
+def get_comp_engine(code):
+    in_stream = io.StringIO(code)
     out_stream = io.StringIO()
-    comp_engine = CompilationEngine(in_stream, out_stream)
+    return CompilationEngine(in_stream, out_stream)
+
+
+def test_compilation_engine_class_basic():
+    comp_engine = get_comp_engine('class Foo {field int bar1, bar2; field Moo goo;}')
     data = comp_engine.start()
-    import pprint; pprint.pprint(data)
     assert  ['class',
                 ('class', 'keyword'),
                 ('Foo', 'identifier'),
@@ -199,7 +202,7 @@ def test_compilation_engine_class_basic():
 
 
 def test_compilation_engine_class():
-    in_stream = io.StringIO(
+    comp_engine = get_comp_engine(
     '''class Foo {
 
         field int bar1, bar2;
@@ -215,10 +218,8 @@ def test_compilation_engine_class():
         function void function_void() {}
     }
     ''')
-    out_stream = io.StringIO()
-    comp_engine = CompilationEngine(in_stream, out_stream)
     data = comp_engine.start()
-    import pprint; pprint.pprint(data)
+    # import pprint; pprint.pprint(data)
     assert  ['class',
                 ('class', 'keyword'),
                 ('Foo', 'identifier'),
@@ -266,6 +267,7 @@ def test_compilation_engine_class():
                             ('k', 'identifier'),
                             (';', 'symbol'),
                         ],
+                        ['statements'],
                         ('}', 'symbol'),
                     ]
                 ],
@@ -278,8 +280,106 @@ def test_compilation_engine_class():
                     (')', 'symbol'),
                     ['subroutineBody',
                         ('{', 'symbol'),
+                        ['statements'],
                         ('}', 'symbol'),
                     ],
                 ],
                ('}', 'symbol'),
             ] == data
+
+
+def test_compile_expression_basic():
+    comp_engine = get_comp_engine('true;')
+    data = comp_engine.compile_expression()
+    ['expression',
+        ['term',
+         Token(value='true', type='keyword')
+        ]
+    ] == data
+
+
+def test_compile_expression_1():
+    comp_engine = get_comp_engine('(3 + x) - (4 + 2);')
+    data = comp_engine.compile_expression()
+    ['expression',
+        ['term',
+            Token(value='(', type='symbol'),
+            ['expression',
+                ['term', Token(value='3', type='integerConst')],
+                Token(value='+', type='symbol'),
+                ['term', Token(value='x', type='identifier')]],
+            Token(value=')', type='symbol')],
+        Token(value='-', type='symbol'),
+        ['term',
+            Token(value='(', type='symbol'),
+            ['expression',
+                ['term', Token(value='4', type='integerConst')],
+                Token(value='+', type='symbol'),
+                ['term', Token(value='2', type='integerConst')]],
+            Token(value=')', type='symbol')]] == data[0]
+
+
+def test_compile_expression_2():
+    comp_engine = get_comp_engine('4 + Foo.bar(arg1, 3);')
+    data = comp_engine.compile_expression()
+    ['expression',
+        ['term', Token(value='4', type='integerConst')],
+        Token(value='+', type='symbol'),
+        ['term',
+            [Token(value='Foo', type='identifier'),
+             Token(value='.', type='symbol'),
+             Token(value='bar', type='identifier'),
+             Token(value='(', type='symbol'),
+                ['expressionList',
+                    ['expression',
+                        ['term', Token(value='arg1', type='identifier')]],
+                    Token(value=',', type='symbol'),
+                    ['expression',
+                        ['term', Token(value='3', type='integerConst')]]],
+                Token(value=')', type='symbol')]]] == data[0]
+
+
+def test_compile_expression_3():
+    comp_engine = get_comp_engine('bar();')
+    data = comp_engine.compile_expression()
+    ['expression',
+     ['term',
+      [Token(value='bar', type='identifier'),
+       Token(value='(', type='symbol'),
+       ['expressionList'],
+       Token(value=')', type='symbol')]]] == data[0]
+
+
+def test_compile_let_1():
+    comp_engine = get_comp_engine('foo = BAR;')
+    data = comp_engine.compile_let(Token('let', 'keyword'))
+    ['letStatement',
+        Token(value='let', type='keyword'),
+        Token(value='foo', type='identifier'),
+        Token(value='=', type='symbol'),
+        ['expression',
+            ['term',
+                Token(value='BAR', type='identifier')
+            ]
+        ],
+        Token(value=';', type='symbol')
+    ] == data
+
+
+def test_compile_let_2():
+    comp_engine = get_comp_engine('foo[4] = BAR;')
+    data = comp_engine.compile_let(Token('let', 'keyword'))
+    ['letStatement',
+        Token(value='let', type='keyword'),
+        Token(value='foo', type='identifier'),
+        Token(value='[', type='symbol'),
+        ['expression', 
+            ['term', Token(value='4', type='integerConst')]
+        ],
+        Token(value=']', type='symbol'),
+        Token(value='=', type='symbol'),
+        ['expression',
+            ['term', Token(value='BAR', type='identifier')]
+        ],
+        Token(value=';', type='symbol')
+    ] == data
