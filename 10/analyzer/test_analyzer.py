@@ -290,7 +290,7 @@ def test_compilation_engine_class():
 
 def test_compile_expression_basic():
     comp_engine = get_comp_engine('true;')
-    data = comp_engine.compile_expression()
+    data = comp_engine.compile_expression(Token('true', 'keyword'))
     ['expression',
         ['term',
          Token(value='true', type='keyword')
@@ -300,7 +300,7 @@ def test_compile_expression_basic():
 
 def test_compile_expression_1():
     comp_engine = get_comp_engine('(3 + x) - (4 + 2);')
-    data = comp_engine.compile_expression()
+    data = comp_engine.compile_expression(Token('3', 'integerConst'))
     ['expression',
         ['term',
             Token(value='(', type='symbol'),
@@ -321,7 +321,7 @@ def test_compile_expression_1():
 
 def test_compile_expression_2():
     comp_engine = get_comp_engine('4 + Foo.bar(arg1, 3);')
-    data = comp_engine.compile_expression()
+    data = comp_engine.compile_expression(Token('4', 'integerConst'))
     ['expression',
         ['term', Token(value='4', type='integerConst')],
         Token(value='+', type='symbol'),
@@ -341,7 +341,7 @@ def test_compile_expression_2():
 
 def test_compile_expression_3():
     comp_engine = get_comp_engine('bar();')
-    data = comp_engine.compile_expression()
+    data = comp_engine.compile_expression(Token('bar', 'identifier'))
     ['expression',
      ['term',
       [Token(value='bar', type='identifier'),
@@ -351,7 +351,7 @@ def test_compile_expression_3():
 
 
 def test_compile_let_1():
-    comp_engine = get_comp_engine('foo = BAR;')
+    comp_engine = get_comp_engine('foo = BAR; ;')
     data = comp_engine.compile_let(Token('let', 'keyword'))
     ['letStatement',
         Token(value='let', type='keyword'),
@@ -363,11 +363,11 @@ def test_compile_let_1():
             ]
         ],
         Token(value=';', type='symbol')
-    ] == data
+    ] == data[0]
 
 
 def test_compile_let_2():
-    comp_engine = get_comp_engine('foo[4] = BAR;')
+    comp_engine = get_comp_engine('foo[4] = BAR; ;')
     data = comp_engine.compile_let(Token('let', 'keyword'))
     ['letStatement',
         Token(value='let', type='keyword'),
@@ -382,4 +382,96 @@ def test_compile_let_2():
             ['term', Token(value='BAR', type='identifier')]
         ],
         Token(value=';', type='symbol')
-    ] == data
+    ] == data[0]
+
+
+def test_compile_if_1():
+    comp_engine = get_comp_engine('(true) {let x = 2;};')
+    data = comp_engine.compile_if(Token('if', 'keyword'))
+    ['ifStatemetn',
+        Token(value='if', type='keyword'),
+        Token(value='(', type='symbol'),
+        ['expression',
+            ['term', Token(value='true', type='keyword')]
+        ],
+        Token(value=')', type='symbol'),
+        Token(value='{', type='symbol'),
+        ['statements',
+            ['letStatement',
+                Token(value='let', type='keyword'),
+                Token(value='x', type='identifier'),
+                Token(value='=', type='symbol'),
+                ['expression',
+                    ['term', Token(value='2', type='integerConst')]
+                ],
+                Token(value=';', type='symbol')
+            ]
+        ],
+        Token(value='}', type='symbol')
+    ] == data[0]
+
+
+def test_compile_if_2():
+    comp_engine = get_comp_engine('(true) {} else {let x = 9;};')
+    data = comp_engine.compile_if(Token('if', 'keyword'))
+    ['ifStatemetn',
+        Token(value='if', type='keyword'),
+        Token(value='(', type='symbol'),
+        ['expression',
+            ['term', Token(value='true', type='keyword')]
+        ],
+        Token(value=')', type='symbol'),
+        Token(value='{', type='symbol'),
+        ['statements'],
+        Token(value='}', type='symbol'),
+        Token(value='else', type='keyword'),
+        Token(value='{', type='symbol'),
+        ['statements',
+            ['letStatement',
+                Token(value='let', type='keyword'),
+                Token(value='x', type='identifier'),
+                Token(value='=', type='symbol'),
+                ['expression',
+                    ['term', Token(value='9', type='integerConst')]
+                ],
+                Token(value=';', type='symbol')
+            ]
+        ],
+        Token(value='}', type='symbol')
+    ] == data[0]
+
+
+def test_compile_while():
+    comp_engine = get_comp_engine('(true) { do foo();};')
+    data = comp_engine.compile_while(Token('while', 'keyword'))
+    ['whileStatement',
+        Token(value='while', type='keyword'),
+        Token(value='(', type='symbol'),
+        ['expression',
+            ['term', Token(value='true', type='keyword')]
+        ],
+        Token(value=')', type='symbol'),
+        Token(value='{', type='symbol'),
+        ['statements',
+            ['doStatement',
+                Token(value='do', type='keyword'),
+                Token(value='foo', type='identifier'),
+                Token(value='(', type='symbol'),
+                ['expressionList'],
+                Token(value=')', type='symbol')
+            ]
+        ],
+        Token(value='}', type='symbol')
+    ] == data[0]
+
+
+def test_compile_do():
+    comp_engine = get_comp_engine('foo();;')
+    data = comp_engine.compile_do(Token('do', 'keyword'))
+    ['doStatement',
+        Token(value='do', type='keyword'),
+        Token(value='foo', type='identifier'),
+        Token(value='(', type='symbol'),
+        ['expressionList'],
+        Token(value=')', type='symbol')
+    ] == data[0]

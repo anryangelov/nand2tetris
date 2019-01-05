@@ -290,19 +290,18 @@ class CompilationEngine:
 
         while True:
             if t.value == 'let':
-                d = self.compile_let(t)
+                d, t = self.compile_let(t)
             elif t.value == 'if':
-                d = self.compile_if(t)
+                d, t = self.compile_if(t)
             elif t.value == 'while':
-                d = self.compile_while(t)
+                d, t = self.compile_while(t)
             elif t.value == 'do':
-                d = self.compile_do(t)
+                d, t = self.compile_do(t)
             elif t.value == 'return':
-                d = self.compile_return()
+                d, t = self.compile_return(t)
             else:
                 break
             data.append(d)
-            t = self.advance()
 
         return data, t
 
@@ -315,49 +314,107 @@ class CompilationEngine:
 
         self.advance_if_value('=', data)
 
-        d, t = self.compile_expression()
+        t = self.advance()
+        d, t = self.compile_expression(t)
         data.append(d)
 
         if t.value != ';':
             raise ParseError(t)
         data.append(t)
+        t = self.advance()
 
-        return data
+        return data, t
 
     def compile_if(self, t):
         data = ['ifStatemetn', t]
 
         self.advance_if_value('(', data)
-        d, t = self.compile_expression()
+        t = self.advance()
+        d, t = self.compile_expression(t)
+        data.append(d)
+        if t.value != ')':
+            raise ParseError(t)
         data.append(t)
-        self.advance_if_value(')', data)
         self.advance_if_value('{', data)
         t = self.advance()
-        d, t = self.compile_statemets('t')
+        d, t = self.compile_statemets(t)
         data.append(d)
+        if t.value != '}':
+            raise ParseError(t)
+        data.append(t)
 
+        t = self.advance()
         if t.value == 'else':
             data.append(t)
             self.advance_if_value('{', data)
+            t = self.advance()
+            d, t = self.compile_statemets(t)
+            data.append(d)
+            if t.value != '}':
+                raise ParseError(t)
+            data.append(t)
+            t = self.advance()
 
-    def compijle_expression(self):
+        return data, t
+
+    def compile_do(self, t):
+        data = ['doStatement', t]
+
+        t = self.advance()
+        d = self.advance_subroutine_call(t)
+        data.extend(d)
+        self.advance_if_value(';')
+        t = self.advance()
+
+        return data, t
+
+    def compile_while(self, t):
+        data = ['whileStatement', t]
+
+        self.advance_if_value('(', data)
+        d, t = self.compile_expression(self.advance())
+        data.append(d)
+        if t.value != ')':
+            raise ParseError(t)
+        data.append(t)
+        self.advance_if_value('{', data)
+        d, t = self.compile_statemets(self.advance())
+        data.append(d)
+        if t.value != '}':
+            raise ParseError(t)
+        data.append(t)
+        t = self.advance()
+
+        return data, t
+
+
+    def compile_return(self, t):
+        data = ['return', t]
+
+        t = self.advance()
+
+        if t.value != ';':
+            data
+
+
+    def compile_expression(self, t):
         data = ['expression']
 
         while True:
-            d = self.compile_term()
+            d = self.compile_term(t)
             data.append(d)
 
             t = self.advance()
             if t.value not in op:
                 break
             data.append(t)
+            t = self.advance()
 
         return data, t
 
-    def compile_term(self):
+    def compile_term(self, t):
         data = ['term']
 
-        t = self.advance()
         t_peak = self.peak()
 
         if t.type in ('integerConst', 'stringConst', ) or t.value in keyword_const:
@@ -376,7 +433,8 @@ class CompilationEngine:
             data.append(t)
         elif t.value == '(':
             data.append(t)
-            d, t = self.compile_expression()
+            t = self.advance()
+            d, t = self.compile_expression(t)
             data.append(d)
             if t.value != ')':
                 raise ParseError(t)
@@ -393,11 +451,13 @@ class CompilationEngine:
             t = self.advance()
             return data, t
 
-        d, t = self.compile_expression()
+        t = self.advance()
+        d, t = self.compile_expression(t)
         data.append(d)
         while t.value == ',':
             data.append(t)
-            d, t = self.compile_expression()
+            t = self.advance()
+            d, t = self.compile_expression(t)
             data.append(d)
 
         return data, t
@@ -420,7 +480,8 @@ class CompilationEngine:
 
     def advance_array(self, data):
         self.advance_if_value('[', data)
-        d, t = self.compile_expression()
+        t = self.advance()
+        d, t = self.compile_expression(t)
         data.append(d)
         if t.value != ']':
             raise ParseError(t)
