@@ -165,6 +165,27 @@ class CompilationEngine:
         else:
             raise ParseError('More tokens than needed')
 
+    @staticmethod
+    def make_xml(data):
+        text, inner_d = data
+        root = ET.Element(text)
+        CompilationEngine._make_sub_elements_xml(inner_d, root)
+        return ET.dump(root)
+
+    @staticmethod
+    def _make_sub_elements_xml(data, root):
+        for d in data:
+            if isinstance(d, list):
+                text, inner_d = d
+                element = ET.SubElement(root, text)
+                CompilationEngine.make_xml(inner_d, element)
+            elif isinstance(d, Token):
+                t = d
+                e = ET.SubElement(root, t.value)
+                e.text = t.type
+            else:
+                raise ValueError('unexpected type: ', d)
+
     def compile_class(self, t):
         data = ['class', t]
 
@@ -387,15 +408,20 @@ class CompilationEngine:
 
         return data, t
 
-
     def compile_return(self, t):
-        data = ['return', t]
+        data = ['returnStatement', t]
 
         t = self.advance()
 
         if t.value != ';':
-            data
+            d, t = self.compile_expression(t)
+            data.append(d)
+        if t.value != ';':
+            raise ParseError(t)
+        data.append(t)
 
+        t = self.advance()
+        return data, t
 
     def compile_expression(self, t):
         data = ['expression']

@@ -475,3 +475,24 @@ def test_compile_do():
         ['expressionList'],
         Token(value=')', type='symbol')
     ] == data[0]
+
+
+def test_compile_return_1():
+    comp_engine = get_comp_engine(';;')
+    data = comp_engine.compile_return(Token('return', 'keyword'))
+    ['returnStatement',
+        Token(value='return', type='keyword'),
+        Token(value=';', type='symbol')
+    ] == data[0]
+
+
+def test_compile_return_2():
+    comp_engine = get_comp_engine('true ;;')
+    data = comp_engine.compile_return(Token('return', 'keyword'))
+    ['returnStatement',
+        Token(value='return', type='keyword'),
+        ['expression',
+            ['term', Token(value='true', type='keyword')]
+        ],
+        Token(value=';', type='symbol')
+    ] == data[0]
